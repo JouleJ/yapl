@@ -21,3 +21,18 @@ instance Applicative Parser where
 instance Monad Parser where
     (>>=) = combine
     return = pure
+
+makeOr :: Parser a -> Parser a -> Parser a
+makeOr p q = Parser r
+       where r s = (runParser p s) ++ (runParser q s)
+
+makeList :: Parser a -> Parser [a]
+makeList p = makeOr (return []) q
+    where q = do x <- p
+                 xs <- makeList p
+                 return (x:xs)
+
+
+makeConditional :: (a -> Bool) -> Parser a -> Parser a
+makeConditional f p = Parser q
+    where q s = filter (\(x, _) -> f x) (runParser p s)
