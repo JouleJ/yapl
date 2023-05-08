@@ -1,0 +1,17 @@
+name: abstract-parser
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - Parser
+    - Fetch
+
+tests:
+  test:
+    main: Main.hs
+    source-dirs: test
+    dependencies:
+      - abstract-parser
+
+dependencies:
+  - base

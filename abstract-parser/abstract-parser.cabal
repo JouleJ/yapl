@@ -1,0 +1,33 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.7.
+--
+-- see: https://github.com/sol/hpack
+
+name:           abstract-parser
+version:        0.0.0
+build-type:     Simple
+
+library
+  exposed-modules:
+      Parser
+      Fetch
+  other-modules:
+      Paths_abstract_parser
+  hs-source-dirs:
+      src
+  build-depends:
+      base
+  default-language: Haskell2010
+
+test-suite test
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  other-modules:
+      Paths_abstract_parser
+  hs-source-dirs:
+      test
+  build-depends:
+      abstract-parser
+    , base
+  default-language: Haskell2010
