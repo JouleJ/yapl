@@ -25,6 +25,9 @@ skipWhitespace = makeList fetchWhitespace
 fetchDigit :: Parser Char
 fetchDigit = makeConditional isDigit fetchAny
 
+fetchLetter :: Parser Char
+fetchLetter = makeConditional isLetter fetchAny
+
 fetchPositiveDigit :: Parser Char
 fetchPositiveDigit = makeConditional (/= '0') fetchDigit
 

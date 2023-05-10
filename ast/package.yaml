@@ -1,0 +1,11 @@
+name: ast
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - Literal
+    - Expression
+
+dependencies:
+  - base
+  - abstract-parser

@@ -32,7 +32,6 @@ makeList p = makeOr (return []) q
                  xs <- makeList p
                  return (x:xs)
 
-
 makeConditional :: (a -> Bool) -> Parser a -> Parser a
 makeConditional f p = Parser q
     where q s = filter (\(x, _) -> f x) (runParser p s)
