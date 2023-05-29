@@ -1,0 +1,23 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.7.
+--
+-- see: https://github.com/sol/hpack
+
+name:           evaluate
+version:        0.0.0
+build-type:     Simple
+
+library
+  exposed-modules:
+      Value
+      Evaluate
+  other-modules:
+      Paths_evaluate
+  hs-source-dirs:
+      src
+  build-depends:
+      ast
+    , base
+    , containers
+  default-language: Haskell2010

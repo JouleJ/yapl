@@ -1,0 +1,12 @@
+name: evaluate
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - Value
+    - Evaluate
+
+dependencies:
+  - base
+  - containers
+  - ast

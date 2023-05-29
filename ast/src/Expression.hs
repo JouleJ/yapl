@@ -1,4 +1,4 @@
-module Expression (Expression, BinaryOperator, UnaryOperator, expressionParser) where
+module Expression where
 
 import qualified Parser as P
 import qualified Fetch as F

@@ -1,4 +1,9 @@
-module Literal (Literal, literalParser) where
+module Literal (Literal (IntegerLiteral
+                        , BooleanLiteral
+                        , CharacterLiteral
+                        , StringLiteral
+                        , ListLiteral)
+               , literalParser) where
 
 import qualified Parser as P
 import qualified Fetch as F
@@ -6,7 +11,8 @@ import qualified Fetch as F
 data Literal = IntegerLiteral Integer |
                BooleanLiteral Bool    |
                CharacterLiteral Char  |
-               StringLiteral String
+               StringLiteral String   |
+               ListLiteral [Literal]
     deriving (Show, Eq)
 
 integerLiteralParser :: P.Parser Literal
@@ -21,8 +27,24 @@ characterLiteralParser = fmap CharacterLiteral F.fetchQuotedChar
 stringLiteralParser :: P.Parser Literal
 stringLiteralParser = fmap StringLiteral F.fetchQuotedString
 
+listLiteralParser :: P.Parser Literal
+listLiteralParser = do _ <- F.fetch '['
+                       _ <- F.skipWhitespace
+                       x <- literalParser
+                       xs <- P.makeList auxillary
+                       _ <- F.skipWhitespace
+                       _ <- F.fetch ']'
+                       return (ListLiteral (x:xs))
+    where auxillary :: P.Parser Literal
+          auxillary = do _ <- F.skipWhitespace
+                         _ <- F.fetch ','
+                         _ <- F.skipWhitespace
+                         x <- literalParser
+                         return x
+
 literalParser :: P.Parser Literal
 literalParser = P.makeOr integerLiteralParser   $
                 P.makeOr booleanLiteralParser   $
                 P.makeOr characterLiteralParser $
-                stringLiteralParser
+                P.makeOr stringLiteralParser    $
+                listLiteralParser
