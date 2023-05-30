@@ -12,6 +12,7 @@ library
   exposed-modules:
       Literal
       Expression
+      Statement
   other-modules:
       Paths_ast
   hs-source-dirs:
