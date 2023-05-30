@@ -5,48 +5,116 @@ import qualified Data.Map as M
 import qualified Value as V
 import qualified Expression as Expr
 
+import Control.Monad
+import Data.Maybe
+
 data Error = LookUpError String                                      |
+             AlreadyExistsError String                               |
+             DoesNotExistError String                                |
              DivisionByZeroError                                     |
              BinaryOperatorError Expr.BinaryOperator V.Value V.Value |
              UnaryOperatorError Expr.UnaryOperator V.Value
 
 instance Show Error where
-    show (LookUpError name) = "No such variable: " ++ name
+    show (LookUpError name) = "Cannot read non-existent variable: " ++ name
+    show (AlreadyExistsError name) = "Cannot introduce variable twice: " ++ name ++ " already defined"
+    show (DoesNotExistError name) = "Cannot assign to non-existent variable: " ++ name
     show (DivisionByZeroError) = "Division by zero"
     show (BinaryOperatorError op left right) = "Cannot evaluate " ++ (show left) ++ " " ++ (show op) ++ " " ++ (show right)
     show (UnaryOperatorError op x) = "Cannot evaluate " ++ (show op) ++ (show x)
 
 data Context = GlobalContext (M.Map String V.Value) |
                LocalContext Context (M.Map String V.Value)
-    deriving (Show)
 
-lookup :: String -> Context -> E.Either Error V.Value
-lookup name (GlobalContext nametable) = case (M.lookup name nametable) of
-                                            Just x -> E.Right x
-                                            _ -> E.Left (LookUpError name)
-lookup name (LocalContext parent nametable) = case (M.lookup name nametable) of
-                                                Just x -> E.Right x
-                                                _ -> Evaluate.lookup name parent
+prettyShowNameTable :: M.Map String V.Value -> String
+prettyShowNameTable = unlines . map (\(name, value) -> show name ++ ": " ++ show value) . M.assocs
 
-assign :: String -> V.Value -> Context -> Context
-assign name x (GlobalContext nametable) = GlobalContext (M.insert name x nametable)
-assign name x (LocalContext parent nametable) = if E.isRight (Evaluate.lookup name parent)
-                                                then LocalContext (assign name x parent) nametable
-                                                else LocalContext parent (M.insert name x nametable)
+instance Show Context where
+    show (GlobalContext nametable) = prettyShowNameTable nametable
+    show (LocalContext parent nametable) = prettyShowNameTable nametable ++ "\nVVVV\n" ++ show parent
 
-declare :: String -> V.Value -> Context -> Context 
-declare name x (GlobalContext nametable) = GlobalContext (M.insert name x nametable)
-declare name x (LocalContext parent nametable) = LocalContext parent (M.insert name x nametable)
+data Evaluator a = Evaluator (Context -> E.Either Error (a, Context))
+
+runEvaluator :: Evaluator a -> Context -> E.Either Error (a, Context)
+runEvaluator (Evaluator e) = e
+
+combine :: Evaluator a -> (a -> Evaluator b) -> Evaluator b
+combine (Evaluator e) f = Evaluator e'
+    where e' c = case e c of
+                    E.Right (x, c') -> runEvaluator (f x) c'
+                    E.Left err -> E.Left err
+
+instance Functor Evaluator where
+    fmap f e = do x <- e
+                  return (f x)
+
+instance Applicative Evaluator where
+    pure x = Evaluator (\c -> E.Right (x, c))
+    (<*>) ef ex = do f <- ef
+                     x <- ex
+                     return (f x)
+
+instance Monad Evaluator where
+    (>>=) = combine
+
+returnError :: Error -> Evaluator a
+returnError err = Evaluator (\c -> E.Left err)
+
+getContext :: Evaluator Context
+getContext = Evaluator (\c -> E.Right (c, c))
+
+setContext :: Context -> Evaluator ()
+setContext c' = Evaluator (\c -> E.Right ((), c'))
+
+readVariable :: String -> Evaluator V.Value
+readVariable name = do c <- getContext
+                       case (impl c) of
+                           Just x -> return x
+                           _ -> returnError (LookUpError name)
+    where impl :: Context -> Maybe V.Value
+          impl (GlobalContext nametable) = M.lookup name nametable
+          impl (LocalContext parent nametable) = let result = M.lookup name nametable in
+                                                 if isJust result
+                                                 then result
+                                                 else impl parent
+
+
+introduceVariable :: String -> V.Value -> Evaluator ()
+introduceVariable name x = do c <- getContext
+                              case c of
+                                  (GlobalContext nametable) -> if M.member name nametable
+                                                               then returnError (AlreadyExistsError name)
+                                                               else setContext (GlobalContext (M.insert name x nametable))
+                                  (LocalContext parent nametable) -> if M.member name nametable
+                                                                     then returnError (AlreadyExistsError name)
+                                                                     else setContext (LocalContext parent (M.insert name x nametable))
+
+assignVariable :: String -> V.Value -> Evaluator ()
+assignVariable name x = do c <- getContext
+                           case (impl c) of
+                               Just c' -> setContext c'
+                               Nothing -> returnError (DoesNotExistError name)
+    where impl :: Context -> Maybe Context
+          impl (GlobalContext nametable) = if M.member name nametable
+                                           then Just (GlobalContext (M.insert name x nametable))
+                                           else Nothing
+          impl (LocalContext parent nametable) = if M.member name nametable
+                                                 then Just (LocalContext parent (M.insert name x nametable))
+                                                 else do parent' <- impl parent
+                                                         return (LocalContext parent' nametable)
 
 emptyContext :: Context
 emptyContext = GlobalContext M.empty
 
-pushContext :: Context -> Context
-pushContext context = LocalContext context M.empty
+pushContext :: Evaluator ()
+pushContext = do c <- getContext
+                 setContext (LocalContext c M.empty)
 
-popContext :: Context -> Context
-popContext (GlobalContext _) = emptyContext
-popContext (LocalContext parent _) = parent
+popContext :: Evaluator ()
+popContext = do c <- getContext
+                case c of
+                    (GlobalContext _) -> setContext emptyContext
+                    (LocalContext parent _) -> setContext parent
 
 applyBinaryOperator :: Expr.BinaryOperator -> V.Value -> V.Value -> E.Either Error V.Value
 applyBinaryOperator Expr.Addition (V.IntegerValue n) (V.IntegerValue m) = E.Right (V.IntegerValue (n + m))
@@ -61,11 +129,15 @@ applyUnaryOperator :: Expr.UnaryOperator -> V.Value -> E.Either Error V.Value
 applyUnaryOperator Expr.Negation (V.IntegerValue n) = E.Right (V.IntegerValue (-n))
 applyUnaryOperator op x = E.Left (UnaryOperatorError op x)
 
-evaluateExpression :: Context -> Expr.Expression -> E.Either Error V.Value
-evaluateExpression context (Expr.ExpressionVariable name) = Evaluate.lookup name context
-evaluateExpression _ (Expr.ExpressionLiteral literal) = E.Right (V.valueFromLiteral literal)
-evaluateExpression context (Expr.ExpressionBinaryOperation op left right) = do leftValue <- evaluateExpression context left
-                                                                               rightValue <- evaluateExpression context right
-                                                                               applyBinaryOperator op leftValue rightValue
-evaluateExpression context (Expr.ExpressionUnaryOperation op e) = do value <- evaluateExpression context e
-                                                                     applyUnaryOperator op value
+evaluateExpression :: Expr.Expression -> Evaluator V.Value
+evaluateExpression (Expr.ExpressionVariable name) = readVariable name
+evaluateExpression (Expr.ExpressionLiteral literal) = return (V.valueFromLiteral literal)
+evaluateExpression (Expr.ExpressionBinaryOperation op leftExpr rightExpr) = do leftValue <- evaluateExpression leftExpr
+                                                                               rightValue <- evaluateExpression rightExpr
+                                                                               case applyBinaryOperator op leftValue rightValue of
+                                                                                   E.Right x -> return x
+                                                                                   E.Left err -> returnError err
+evaluateExpression (Expr.ExpressionUnaryOperation op expr) = do value <- evaluateExpression expr
+                                                                case applyUnaryOperator op value of
+                                                                    E.Right x -> return x
+                                                                    E.Left err -> returnError err
