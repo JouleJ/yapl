@@ -20,7 +20,6 @@ instance Applicative Parser where
 
 instance Monad Parser where
     (>>=) = combine
-    return = pure
 
 makeOr :: Parser a -> Parser a -> Parser a
 makeOr p q = Parser r
