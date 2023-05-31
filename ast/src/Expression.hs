@@ -54,10 +54,25 @@ countNodes (ExpressionBinaryOperation _ left right) = (countNodes left) + 1 + (c
 countNodes (ExpressionUnaryOperation _ expr) = 1 + (countNodes expr)
 countNodes (ExpressionList es) = 1 + sum (map countNodes es)
 
+keywords :: [String]
+keywords = ["true",
+            "false",
+            "begin",
+            "end",
+            "do",
+            "while",
+            "if",
+            "then",
+            "else",
+            "function",
+            "procedure"]
+
 fetchVariableName :: P.Parser String
-fetchVariableName = do x <- P.makeOr (F.fetch '_') F.fetchLetter
-                       xs <- P.makeList (P.makeOr (F.fetch '_') (P.makeOr F.fetchDigit F.fetchLetter))
-                       return (x:xs)
+fetchVariableName = P.makeConditional (\x -> not $ elem x keywords) p
+    where p :: P.Parser String
+          p = do x <- P.makeOr (F.fetch '_') F.fetchLetter
+                 xs <- P.makeList (P.makeOr (F.fetch '_') (P.makeOr F.fetchDigit F.fetchLetter))
+                 return (x:xs)
 
 expressionVariableParser :: P.Parser Expression
 expressionVariableParser = fmap ExpressionVariable fetchVariableName
