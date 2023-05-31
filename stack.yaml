@@ -5,3 +5,4 @@ packages:
   - abstract-parser
   - ast
   - evaluate
+  - launcher

@@ -1,0 +1,11 @@
+name: launcher
+
+executable:
+  main: Main.hs
+  source-dirs: src
+
+dependencies:
+  - base
+  - abstract-parser
+  - ast
+  - evaluate

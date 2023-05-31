@@ -27,6 +27,10 @@ characterLiteralParser = fmap CharacterLiteral F.fetchQuotedChar
 stringLiteralParser :: P.Parser Literal
 stringLiteralParser = fmap StringLiteral F.fetchQuotedString
 
+emptyListLiteralParser :: P.Parser Literal
+emptyListLiteralParser = do F.fetchString "[]"
+                            return (ListLiteral [])
+
 listLiteralParser :: P.Parser Literal
 listLiteralParser = do _ <- F.fetch '['
                        _ <- F.skipWhitespace
@@ -43,8 +47,9 @@ listLiteralParser = do _ <- F.fetch '['
                          return x
 
 literalParser :: P.Parser Literal
-literalParser = P.makeOr integerLiteralParser   $
-                P.makeOr booleanLiteralParser   $
-                P.makeOr characterLiteralParser $
-                P.makeOr stringLiteralParser    $
-                listLiteralParser
+literalParser = foldr1 P.makeOr [integerLiteralParser,
+                                 booleanLiteralParser,
+                                 characterLiteralParser,
+                                 stringLiteralParser,
+                                 listLiteralParser,
+                                 emptyListLiteralParser]

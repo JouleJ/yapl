@@ -4,18 +4,27 @@ import qualified Parser as P
 import qualified Fetch as F
 import qualified Literal as L
 
-data BinaryOperator = Addition | Subtraction | Multiplication | Division
+data BinaryOperator = Addition       |
+                      Subtraction    |
+                      Multiplication |
+                      Division       |
+                      Less           |
+                      Concat
     deriving (Show, Eq)
 
 fetchBinaryOperator :: P.Parser BinaryOperator
-fetchBinaryOperator = P.makeOr fetchAddition       $
-                      P.makeOr fetchSubtraction    $
-                      P.makeOr fetchMultiplication $
-                      fetchDivision
+fetchBinaryOperator = foldr1 P.makeOr [fetchAddition,
+                                       fetchSubtraction,
+                                       fetchMultiplication,
+                                       fetchDivision,
+                                       fetchLess,
+                                       fetchConcat]
     where fetchAddition = fmap (\_ -> Addition) $ F.fetch '+'
           fetchSubtraction = fmap (\_ -> Subtraction) $ F.fetch '-'
           fetchMultiplication = fmap (\_ -> Multiplication) $ F.fetch '*'
           fetchDivision = fmap (\_ -> Division) $ F.fetch '/'
+          fetchLess = fmap (\_ -> Less) $ F.fetch '<'
+          fetchConcat = fmap (\_ -> Concat) $ F.fetchString "++"
 
 data UnaryOperator = Negation
     deriving (Show, Eq)
@@ -24,13 +33,26 @@ fetchUnaryOperator :: P.Parser UnaryOperator
 fetchUnaryOperator = fmap (\_ -> Negation) $ F.fetch '-'
 
 binaryOperatorsListedByPriority :: [BinaryOperator]
-binaryOperatorsListedByPriority = [Addition, Subtraction, Multiplication, Division]
+binaryOperatorsListedByPriority = [Less,
+                                   Addition,
+                                   Concat,
+                                   Subtraction,
+                                   Multiplication,
+                                   Division]
 
 data Expression = ExpressionVariable String                                      |
                   ExpressionLiteral L.Literal                                    |
                   ExpressionBinaryOperation BinaryOperator Expression Expression |
-                  ExpressionUnaryOperation UnaryOperator Expression
+                  ExpressionUnaryOperation UnaryOperator Expression              |
+                  ExpressionList [Expression]
     deriving (Show, Eq)
+
+countNodes :: Expression -> Integer
+countNodes (ExpressionVariable _) = 1
+countNodes (ExpressionLiteral _) = 1
+countNodes (ExpressionBinaryOperation _ left right) = (countNodes left) + 1 + (countNodes right)
+countNodes (ExpressionUnaryOperation _ expr) = 1 + (countNodes expr)
+countNodes (ExpressionList es) = 1 + sum (map countNodes es)
 
 fetchVariableName :: P.Parser String
 fetchVariableName = do x <- P.makeOr (F.fetch '_') F.fetchLetter
@@ -57,11 +79,27 @@ expressionUnaryOperationParser = do u <- fetchUnaryOperator
                                     e <- expressionParser
                                     return (ExpressionUnaryOperation u e)
 
+expressionListParser :: P.Parser Expression
+expressionListParser = do F.fetch '['
+                          F.skipWhitespace
+                          e <- expressionParser
+                          es <- P.makeList auxillary
+                          F.skipWhitespace
+                          F.fetch ']'
+                          return (ExpressionList (e:es))
+    where auxillary :: P.Parser Expression
+          auxillary = do F.skipWhitespace
+                         F.fetch ','
+                         F.skipWhitespace
+                         e <- expressionParser
+                         return e
+
 expressionTermParser :: P.Parser Expression
-expressionTermParser = P.makeOr expressionVariableParser      $
-                       P.makeOr expressionLiteralParser       $
-                       P.makeOr expressionInParenthesisParser $
-                       expressionUnaryOperationParser
+expressionTermParser = foldr1 P.makeOr [expressionVariableParser,
+                                        expressionLiteralParser,
+                                        expressionInParenthesisParser,
+                                        expressionUnaryOperationParser,
+                                        expressionListParser]
 
 expressionBinaryOperationParser :: P.Parser Expression
 expressionBinaryOperationParser = helper binaryOperatorsListedByPriority expressionTermParser

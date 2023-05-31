@@ -2,8 +2,9 @@ module Evaluate where
 
 import qualified Data.Either as E
 import qualified Data.Map as M
-import qualified Value as V
 import qualified Expression as Expr
+import qualified Statement as S
+import qualified Value as V
 
 import Control.Monad
 import Data.Maybe
@@ -25,13 +26,7 @@ instance Show Error where
 
 data Context = GlobalContext (M.Map String V.Value) |
                LocalContext Context (M.Map String V.Value)
-
-prettyShowNameTable :: M.Map String V.Value -> String
-prettyShowNameTable = unlines . map (\(name, value) -> show name ++ ": " ++ show value) . M.assocs
-
-instance Show Context where
-    show (GlobalContext nametable) = prettyShowNameTable nametable
-    show (LocalContext parent nametable) = prettyShowNameTable nametable ++ "\nVVVV\n" ++ show parent
+    deriving (Show)
 
 data Evaluator a = Evaluator (Context -> E.Either Error (a, Context))
 
@@ -123,6 +118,8 @@ applyBinaryOperator Expr.Multiplication (V.IntegerValue n) (V.IntegerValue m) = 
 applyBinaryOperator Expr.Division (V.IntegerValue n) (V.IntegerValue m) = if m == 0
                                                                           then E.Left DivisionByZeroError
                                                                           else E.Right (V.IntegerValue (div n m))
+applyBinaryOperator Expr.Less (V.IntegerValue n) (V.IntegerValue m) = E.Right (V.BooleanValue (n < m))
+applyBinaryOperator Expr.Concat (V.ListValue xs) (V.ListValue ys) = E.Right (V.ListValue (xs ++ ys))
 applyBinaryOperator op left right = E.Left (BinaryOperatorError op left right)
 
 applyUnaryOperator :: Expr.UnaryOperator -> V.Value -> E.Either Error V.Value
@@ -141,3 +138,50 @@ evaluateExpression (Expr.ExpressionUnaryOperation op expr) = do value <- evaluat
                                                                 case applyUnaryOperator op value of
                                                                     E.Right x -> return x
                                                                     E.Left err -> returnError err
+evaluateExpression (Expr.ExpressionList es) = fmap V.ListValue $ mapM evaluateExpression es
+
+data ControlFlow = Finish | Return V.Value | Break | Continue
+    deriving (Show)
+
+evaluateStatement :: S.Statement -> Evaluator ControlFlow
+evaluateStatement (S.AssignmentStatement name expr) = do value <- evaluateExpression expr
+                                                         assignVariable name value
+                                                         return Finish
+evaluateStatement (S.IfStatement cond block) = do value <- evaluateExpression cond
+                                                  if V.isTrue value
+                                                  then evaluateScope block
+                                                  else return Finish
+evaluateStatement (S.IfElseStatement cond block block') = do value <- evaluateExpression cond
+                                                             if V.isTrue value
+                                                             then evaluateScope block
+                                                             else evaluateScope block'
+evaluateStatement (S.WhileStatement cond block) = do value <- evaluateExpression cond
+                                                     if V.isTrue value
+                                                     then do cf <- evaluateScope block
+                                                             case cf of
+                                                                 Return x -> return (Return x)
+                                                                 Break -> return Finish
+                                                                 _ -> evaluateStatement (S.WhileStatement cond block)
+                                                     else return Finish
+evaluateStatement (S.ReturnStatement expr) = do value <- evaluateExpression expr
+                                                return (Return value)
+evaluateStatement S.BreakStatement = return Break
+evaluateStatement S.ContinueStatement = return Continue
+evaluateStatement (S.IntroductionStatement name expr) = do value <- evaluateExpression expr
+                                                           introduceVariable name value
+                                                           return Finish
+
+evaluateBlock :: [S.Statement] -> Evaluator ControlFlow
+evaluateBlock [] = return Finish
+evaluateBlock (stmt:block) = do cf <- evaluateStatement stmt
+                                case cf of
+                                    Finish -> evaluateBlock block
+                                    Return x -> return (Return x)
+                                    Break -> return Break
+                                    Continue -> return Finish
+
+evaluateScope :: [S.Statement] -> Evaluator ControlFlow
+evaluateScope block = do pushContext
+                         cf <- evaluateBlock block
+                         popContext
+                         return cf

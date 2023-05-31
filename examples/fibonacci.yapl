@@ -1,0 +1,14 @@
+var fibs := []
+var x := 0
+var y := 1
+var i := 0
+var n := 50
+
+while i < n do
+    var z := x + y
+    x := y
+    y := z
+
+    fibs := fibs ++ [z]
+    i := i + 1
+end

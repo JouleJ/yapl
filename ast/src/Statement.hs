@@ -14,6 +14,16 @@ data Statement = AssignmentStatement String E.Expression              |
                  IntroductionStatement String E.Expression
     deriving (Show, Eq)
 
+countNodes :: Statement -> Integer
+countNodes (AssignmentStatement _ expr) = 1 + (E.countNodes expr)
+countNodes (IfStatement cond block) = 1 + (E.countNodes cond) + sum (map countNodes block)
+countNodes (IfElseStatement cond block block') = 1 + (E.countNodes cond) + sum (map countNodes block) + sum (map countNodes block')
+countNodes (WhileStatement cond block) = 1 + (E.countNodes cond) + sum (map countNodes block)
+countNodes (ReturnStatement expr) = 1 + (E.countNodes expr)
+countNodes BreakStatement = 1
+countNodes ContinueStatement = 1
+countNodes (IntroductionStatement _ expr) = 1 + (E.countNodes expr)
+
 assignmentStatementParser :: P.Parser Statement
 assignmentStatementParser = do name <- E.fetchVariableName
                                F.skipWhitespace
@@ -81,6 +91,7 @@ introductionStatementParser = do F.fetchString "var"
                                  name <- E.fetchVariableName
                                  F.skipWhitespace
                                  F.fetchString ":="
+                                 F.skipWhitespace
                                  expr <- E.expressionParser
                                  return (IntroductionStatement name expr)
 
