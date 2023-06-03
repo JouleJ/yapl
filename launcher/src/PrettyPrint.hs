@@ -71,6 +71,10 @@ instance PrettyPrint S.Statement where
     prettyPrint i (S.IntroductionStatement name expr) = do putWithIndent i "Introduction"
                                                            putWithIndent (advance i) name
                                                            prettyPrint (advance i) expr
+    prettyPrint i (S.ProcedureCallStatement name argExprs) = do putWithIndent i "CallProcedure"
+                                                                putWithIndent (advance i) name
+                                                                putWithIndent (advance i) "Arguments"
+                                                                mapM_ (prettyPrint (advance . advance $ i)) argExprs
 
 instance PrettyPrint [S.Statement] where
     prettyPrint i = mapM_ (prettyPrint i)

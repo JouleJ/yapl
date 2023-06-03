@@ -12,7 +12,8 @@ data Statement = AssignmentStatement String E.Expression              |
                  ReturnNothingStatement                               |
                  BreakStatement                                       |
                  ContinueStatement                                    |
-                 IntroductionStatement String E.Expression
+                 IntroductionStatement String E.Expression            |
+                 ProcedureCallStatement String [E.Expression]
     deriving (Show, Eq)
 
 assignmentStatementParser :: P.Parser Statement
@@ -90,6 +91,23 @@ introductionStatementParser = do F.fetchString "var"
                                  expr <- E.expressionParser
                                  return (IntroductionStatement name expr)
 
+procedureCallStatementParser :: P.Parser Statement
+procedureCallStatementParser = do procName <- E.fetchVariableName
+                                  F.skipWhitespace
+                                  F.fetch '('
+                                  F.skipWhitespace
+                                  argExprs <- P.makeOr p (return [])
+                                  F.fetch ')'
+                                  return (ProcedureCallStatement procName argExprs)
+    where p, q :: P.Parser [E.Expression]
+          p = do expr <- E.expressionParser
+                 F.skipWhitespace
+                 tail <- P.makeOr q (return [])
+                 return (expr:tail)
+          q = do F.fetch ','
+                 F.skipWhitespace
+                 p
+
 statementParser :: P.Parser Statement
 statementParser = foldr1 P.makeOr [assignmentStatementParser, 
                                    ifStatementParser,
@@ -99,7 +117,8 @@ statementParser = foldr1 P.makeOr [assignmentStatementParser,
                                    breakStatementParser,
                                    continueStatementParser,
                                    introductionStatementParser,
-                                   returnNothingStatementParser]
+                                   returnNothingStatementParser,
+                                   procedureCallStatementParser]
 
 blockParser :: P.Parser [Statement]
 blockParser = P.makeList p

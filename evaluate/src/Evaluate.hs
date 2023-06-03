@@ -135,7 +135,7 @@ getProcedure :: String -> Evaluator Procedure
 getProcedure name = do c <- getContext
                        case (impl c) of
                            Just proc -> return proc
-                           Nothing -> returnError (DoesNotExistError name)
+                           Nothing -> returnError (LookUpError name)
     where impl :: Context -> Maybe Procedure
           impl (GlobalContext _ _ ptable) = M.lookup name ptable
           impl (LocalContext parent _) = impl parent
@@ -246,6 +246,10 @@ evaluateStatement S.ContinueStatement = return Continue
 evaluateStatement (S.IntroductionStatement name expr) = do value <- evaluateExpression expr
                                                            introduceVariable name value
                                                            return Finish
+evaluateStatement (S.ProcedureCallStatement name argExprs) = do proc <- getProcedure name
+                                                                args <- mapM evaluateExpression argExprs
+                                                                callProcedure proc args
+                                                                return Finish
 
 evaluateBlock :: [S.Statement] -> Evaluator ControlFlow
 evaluateBlock [] = return Finish
