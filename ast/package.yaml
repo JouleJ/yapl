@@ -6,6 +6,7 @@ library:
     - Literal
     - Expression
     - Statement
+    - Definition
 
 dependencies:
   - base

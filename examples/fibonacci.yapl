@@ -1,14 +1,18 @@
-var fibs := []
-var x := 0
-var y := 1
-var i := 0
-var n := 50
+global fibs := []
 
-while i < n do
-    var z := x + y
-    x := y
-    y := z
+procedure main()
+begin
+    var x := 0
+    var y := 1
+    var i := 0
+    var n := 50
 
-    fibs := fibs ++ [z]
-    i := i + 1
+    while i < n do
+        var z := x + y
+        x := y
+        y := z
+
+        fibs := fibs ++ [z]
+        i := i + 1
+    end
 end

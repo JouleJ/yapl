@@ -3,9 +3,12 @@ name: launcher
 executable:
   main: Main.hs
   source-dirs: src
+  default-extensions:
+    - FlexibleInstances
 
 dependencies:
   - base
+  - containers
   - abstract-parser
   - ast
   - evaluate

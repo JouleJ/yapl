@@ -1,0 +1,23 @@
+procedure main()
+begin
+    var l := [6, 2, 1, 2, 2, 0, 7, 3, 5]
+    var n := length(l)
+    var i := 0
+    var flag := true
+
+    while flag do
+        flag := false
+
+        while i + 1 < n do
+            first := read(l, i)
+            second := read(l, i + 1)
+            if first > second then
+                l := modify(l, i, second)
+                l := modify(l, i + 1, first)
+                flag := true
+            end
+
+            i := i + 1
+        end
+    end
+end

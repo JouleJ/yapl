@@ -47,13 +47,6 @@ data Expression = ExpressionVariable String                                     
                   ExpressionList [Expression]
     deriving (Show, Eq)
 
-countNodes :: Expression -> Integer
-countNodes (ExpressionVariable _) = 1
-countNodes (ExpressionLiteral _) = 1
-countNodes (ExpressionBinaryOperation _ left right) = (countNodes left) + 1 + (countNodes right)
-countNodes (ExpressionUnaryOperation _ expr) = 1 + (countNodes expr)
-countNodes (ExpressionList es) = 1 + sum (map countNodes es)
-
 keywords :: [String]
 keywords = ["true",
             "false",
@@ -65,7 +58,8 @@ keywords = ["true",
             "then",
             "else",
             "function",
-            "procedure"]
+            "procedure",
+            "global"]
 
 fetchVariableName :: P.Parser String
 fetchVariableName = P.makeConditional (\x -> not $ elem x keywords) p

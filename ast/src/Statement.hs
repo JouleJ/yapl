@@ -9,20 +9,11 @@ data Statement = AssignmentStatement String E.Expression              |
                  IfElseStatement E.Expression [Statement] [Statement] |
                  WhileStatement E.Expression [Statement]              |
                  ReturnStatement E.Expression                         |
+                 ReturnNothingStatement                               |
                  BreakStatement                                       |
                  ContinueStatement                                    |
                  IntroductionStatement String E.Expression
     deriving (Show, Eq)
-
-countNodes :: Statement -> Integer
-countNodes (AssignmentStatement _ expr) = 1 + (E.countNodes expr)
-countNodes (IfStatement cond block) = 1 + (E.countNodes cond) + sum (map countNodes block)
-countNodes (IfElseStatement cond block block') = 1 + (E.countNodes cond) + sum (map countNodes block) + sum (map countNodes block')
-countNodes (WhileStatement cond block) = 1 + (E.countNodes cond) + sum (map countNodes block)
-countNodes (ReturnStatement expr) = 1 + (E.countNodes expr)
-countNodes BreakStatement = 1
-countNodes ContinueStatement = 1
-countNodes (IntroductionStatement _ expr) = 1 + (E.countNodes expr)
 
 assignmentStatementParser :: P.Parser Statement
 assignmentStatementParser = do name <- E.fetchVariableName
@@ -77,6 +68,10 @@ returnStatementParser = do F.fetchString "return"
                            expr <- E.expressionParser
                            return (ReturnStatement expr)
 
+returnNothingStatementParser :: P.Parser Statement
+returnNothingStatementParser = do F.fetchString "return"
+                                  return (ReturnNothingStatement)
+
 breakStatementParser :: P.Parser Statement
 breakStatementParser = do F.fetchString "break"
                           return BreakStatement
@@ -103,7 +98,8 @@ statementParser = foldr1 P.makeOr [assignmentStatementParser,
                                    returnStatementParser,
                                    breakStatementParser,
                                    continueStatementParser,
-                                   introductionStatementParser]
+                                   introductionStatementParser,
+                                   returnNothingStatementParser]
 
 blockParser :: P.Parser [Statement]
 blockParser = P.makeList p

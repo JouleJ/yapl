@@ -5,15 +5,24 @@ module Literal (Literal (IntegerLiteral
                         , ListLiteral)
                , literalParser) where
 
-import qualified Parser as P
 import qualified Fetch as F
+import qualified Parser as P
+
+import Data.List (intercalate)
 
 data Literal = IntegerLiteral Integer |
                BooleanLiteral Bool    |
                CharacterLiteral Char  |
                StringLiteral String   |
                ListLiteral [Literal]
-    deriving (Show, Eq)
+    deriving (Eq)
+
+instance Show Literal where
+    show (IntegerLiteral n) = show n
+    show (BooleanLiteral b) = show b
+    show (CharacterLiteral c) = show c
+    show (StringLiteral s) = show s
+    show (ListLiteral l) = "[" ++ intercalate ", " (map show l) ++ "]"
 
 integerLiteralParser :: P.Parser Literal
 integerLiteralParser = fmap IntegerLiteral F.fetchInteger

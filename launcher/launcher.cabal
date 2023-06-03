@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.7.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -11,12 +11,16 @@ build-type:     Simple
 executable launcher
   main-is: Main.hs
   other-modules:
+      PrettyPrint
       Paths_launcher
   hs-source-dirs:
       src
+  default-extensions:
+      FlexibleInstances
   build-depends:
       abstract-parser
     , ast
     , base
+    , containers
     , evaluate
   default-language: Haskell2010
