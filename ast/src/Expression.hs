@@ -9,6 +9,7 @@ data BinaryOperator = Addition       |
                       Multiplication |
                       Division       |
                       Less           |
+                      Greater        |
                       Concat
     deriving (Show, Eq)
 
@@ -18,12 +19,14 @@ fetchBinaryOperator = foldr1 P.makeOr [fetchAddition,
                                        fetchMultiplication,
                                        fetchDivision,
                                        fetchLess,
+                                       fetchGreater,
                                        fetchConcat]
     where fetchAddition = fmap (\_ -> Addition) $ F.fetch '+'
           fetchSubtraction = fmap (\_ -> Subtraction) $ F.fetch '-'
           fetchMultiplication = fmap (\_ -> Multiplication) $ F.fetch '*'
           fetchDivision = fmap (\_ -> Division) $ F.fetch '/'
           fetchLess = fmap (\_ -> Less) $ F.fetch '<'
+          fetchGreater = fmap (\_ -> Greater) $ F.fetch '>'
           fetchConcat = fmap (\_ -> Concat) $ F.fetchString "++"
 
 data UnaryOperator = Negation
@@ -34,6 +37,7 @@ fetchUnaryOperator = fmap (\_ -> Negation) $ F.fetch '-'
 
 binaryOperatorsListedByPriority :: [BinaryOperator]
 binaryOperatorsListedByPriority = [Less,
+                                   Greater,
                                    Addition,
                                    Concat,
                                    Subtraction,

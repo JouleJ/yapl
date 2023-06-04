@@ -219,6 +219,7 @@ applyBinaryOperator Expr.Division (V.IntegerValue n) (V.IntegerValue m) = if m =
                                                                           then E.Left DivisionByZeroError
                                                                           else E.Right (V.IntegerValue (div n m))
 applyBinaryOperator Expr.Less (V.IntegerValue n) (V.IntegerValue m) = E.Right (V.BooleanValue (n < m))
+applyBinaryOperator Expr.Greater (V.IntegerValue n) (V.IntegerValue m) = E.Right (V.BooleanValue (n > m))
 applyBinaryOperator Expr.Concat (V.ListValue xs) (V.ListValue ys) = E.Right (V.ListValue (xs ++ ys))
 applyBinaryOperator op left right = E.Left (BinaryOperatorError op left right)
 
