@@ -15,6 +15,7 @@ data Error = LookUpError String                                      |
              DoesNotExistError String                                |
              DivisionByZeroError                                     |
              ArgumentCountMismatchError                              |
+             FunctionMustReturnValueError                            |
              BinaryOperatorError Expr.BinaryOperator V.Value V.Value |
              UnaryOperatorError Expr.UnaryOperator V.Value
 
@@ -23,6 +24,7 @@ instance Show Error where
     show (AlreadyExistsError name) = "Cannot introduce variable twice: " ++ name ++ " already defined"
     show (DoesNotExistError name) = "Cannot assign to non-existent variable: " ++ name
     show ArgumentCountMismatchError = "Wrong number of arguments provided"
+    show FunctionMustReturnValueError = "Function must return value"
     show DivisionByZeroError = "Division by zero"
     show (BinaryOperatorError op left right) = "Cannot evaluate " ++ (show left) ++ " " ++ (show op) ++ " " ++ (show right)
     show (UnaryOperatorError op x) = "Cannot evaluate " ++ (show op) ++ (show x)
@@ -131,6 +133,15 @@ defineProcedure name p = do c <- getContext
           impl (LocalContext parent vtable) = do parent' <- impl parent
                                                  return (LocalContext parent' vtable)
 
+getFunction :: String -> Evaluator Function
+getFunction name = do c <- getContext
+                      case (impl c) of
+                          Just func -> return func
+                          Nothing -> returnError (LookUpError name)
+    where impl :: Context -> Maybe Function
+          impl (GlobalContext _ ftable _) = M.lookup name ftable
+          impl (LocalContext parent _) = impl parent
+
 getProcedure :: String -> Evaluator Procedure
 getProcedure name = do c <- getContext
                        case (impl c) of
@@ -171,6 +182,21 @@ callProcedure (Procedure argNames block) args = do ctx <- getContext
                                                    gCtx' <- getGlobalContext
                                                    setContext ctx
                                                    setGlobalContext gCtx'
+
+callFunction :: Function -> [V.Value] -> Evaluator V.Value
+callFunction (Function argNames block) args = do ctx <- getContext
+                                                 gCtx <- getGlobalContext
+                                                 setContext gCtx
+                                                 pushContext
+                                                 introduceArgs argNames args
+                                                 cf <- evaluateBlock block
+                                                 popContext
+                                                 gCtx' <- getGlobalContext
+                                                 setContext ctx
+                                                 setGlobalContext gCtx'
+                                                 case cf of
+                                                     Return x -> return x
+                                                     _ -> returnError FunctionMustReturnValueError
 
 emptyContext :: Context
 emptyContext = GlobalContext M.empty M.empty M.empty
@@ -213,6 +239,9 @@ evaluateExpression (Expr.ExpressionUnaryOperation op expr) = do value <- evaluat
                                                                     E.Right x -> return x
                                                                     E.Left err -> returnError err
 evaluateExpression (Expr.ExpressionList es) = fmap V.ListValue $ mapM evaluateExpression es
+evaluateExpression (Expr.ExpressionCallFunction funcName argExprs) = do func <- getFunction funcName
+                                                                        args <- mapM evaluateExpression argExprs
+                                                                        callFunction func args
 
 data ControlFlow = Finish | Return V.Value | ReturnNothing | Break | Continue
     deriving (Show)

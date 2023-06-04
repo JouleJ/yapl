@@ -22,6 +22,9 @@ fetchWhitespace = makeConditional isSpace fetchAny
 skipWhitespace :: Parser String
 skipWhitespace = makeList fetchWhitespace 
 
+enforceWhitespace :: Parser String
+enforceWhitespace = makeConditional (not . null) skipWhitespace
+
 fetchDigit :: Parser Char
 fetchDigit = makeConditional isDigit fetchAny
 

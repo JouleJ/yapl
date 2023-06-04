@@ -44,7 +44,8 @@ data Expression = ExpressionVariable String                                     
                   ExpressionLiteral L.Literal                                    |
                   ExpressionBinaryOperation BinaryOperator Expression Expression |
                   ExpressionUnaryOperation UnaryOperator Expression              |
-                  ExpressionList [Expression]
+                  ExpressionList [Expression]                                    |
+                  ExpressionCallFunction String [Expression]
     deriving (Show, Eq)
 
 keywords :: [String]
@@ -103,12 +104,30 @@ expressionListParser = do F.fetch '['
                          e <- expressionParser
                          return e
 
+expressionCallFunctionParser :: P.Parser Expression
+expressionCallFunctionParser = do funcName <- fetchVariableName
+                                  F.skipWhitespace
+                                  F.fetch '('
+                                  F.skipWhitespace
+                                  argExprs <- P.makeOr p (return [])
+                                  F.fetch ')'
+                                  return (ExpressionCallFunction funcName argExprs)
+    where p, q :: P.Parser [Expression]
+          p = do expr <- expressionParser
+                 F.skipWhitespace
+                 tail <- P.makeOr q (return [])
+                 return (expr:tail)
+          q = do F.fetch ','
+                 F.skipWhitespace
+                 p
+
 expressionTermParser :: P.Parser Expression
 expressionTermParser = foldr1 P.makeOr [expressionVariableParser,
                                         expressionLiteralParser,
                                         expressionInParenthesisParser,
                                         expressionUnaryOperationParser,
-                                        expressionListParser]
+                                        expressionListParser,
+                                        expressionCallFunctionParser]
 
 expressionBinaryOperationParser :: P.Parser Expression
 expressionBinaryOperationParser = helper binaryOperatorsListedByPriority expressionTermParser

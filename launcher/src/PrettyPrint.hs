@@ -41,6 +41,10 @@ instance PrettyPrint E.Expression where
                                                             prettyPrint (advance i) expr
     prettyPrint i (E.ExpressionList es) = do putWithIndent i "List"
                                              mapM_ (prettyPrint (advance i)) es
+    prettyPrint i (E.ExpressionCallFunction funcName argExprs) = do putWithIndent i "CallFunction"
+                                                                    putWithIndent (advance i) funcName
+                                                                    putWithIndent (advance i) "Arguments"
+                                                                    mapM_ (prettyPrint (advance . advance $ i)) argExprs
 
 instance PrettyPrint S.Statement where
     prettyPrint i (S.AssignmentStatement name expr) = do putWithIndent i "Assignment"

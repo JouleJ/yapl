@@ -121,8 +121,10 @@ statementParser = foldr1 P.makeOr [assignmentStatementParser,
                                    procedureCallStatementParser]
 
 blockParser :: P.Parser [Statement]
-blockParser = P.makeList p
-    where p :: P.Parser Statement
+blockParser = P.makeOr p (return [])
+    where p, q :: P.Parser [Statement]
           p = do stmt <- statementParser
-                 F.skipWhitespace
-                 return stmt
+                 tail <- P.makeOr q (return [])
+                 return (stmt:tail)
+          q = do F.enforceWhitespace
+                 p

@@ -45,7 +45,8 @@ functionDefinitionParser = do F.fetchString "function"
                               F.skipWhitespace
                               F.fetchString "begin"
                               F.skipWhitespace
-                              body <- S.blockParser -- already includes F.skipWhitespace
+                              body <- S.blockParser
+                              F.skipWhitespace
                               F.fetchString "end"
                               return (FunctionDefinition fName argNames body)
 
@@ -58,7 +59,8 @@ procedureDefinitionParser = do F.fetchString "procedure"
                                F.skipWhitespace
                                F.fetchString "begin"
                                F.skipWhitespace
-                               body <- S.blockParser -- already includes F.skipWhitespace
+                               body <- S.blockParser
+                               F.skipWhitespace
                                F.fetchString "end"
                                return (ProcedureDefinition pName argNames body)
 
