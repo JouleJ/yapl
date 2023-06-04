@@ -6,6 +6,7 @@ import qualified Definition as D
 import qualified Expression as Expr
 import qualified Statement as S
 import qualified Value as V
+import qualified Builtin as B
 
 import Control.Monad
 import Data.Maybe
@@ -29,8 +30,18 @@ instance Show Error where
     show (BinaryOperatorError op left right) = "Cannot evaluate " ++ (show left) ++ " " ++ (show op) ++ " " ++ (show right)
     show (UnaryOperatorError op x) = "Cannot evaluate " ++ (show op) ++ (show x)
 
-data Function = Function [String] [S.Statement]
-    deriving (Show)
+data Function = Function [String] [S.Statement]                          |
+                BuiltinFunction0 V.Value                                 |
+                BuiltinFunction1 (V.Value -> V.Value)                    |
+                BuiltinFunction2 ((V.Value, V.Value) -> V.Value)         |
+                BuiltinFunction3 ((V.Value, V.Value, V.Value) -> V.Value)
+
+instance Show Function where
+    show (Function argNames block) = "Function " ++ show argNames ++ " " ++ show block
+    show (BuiltinFunction0 _) = "BuiltinFunction0"
+    show (BuiltinFunction1 _) = "BuiltinFunction1"
+    show (BuiltinFunction2 _) = "BuiltinFunction2"
+    show (BuiltinFunction3 _) = "BuiltinFunction3"
 
 data Procedure = Procedure [String] [S.Statement]
     deriving (Show)
@@ -197,6 +208,18 @@ callFunction (Function argNames block) args = do ctx <- getContext
                                                  case cf of
                                                      Return x -> return x
                                                      _ -> returnError FunctionMustReturnValueError
+callFunction (BuiltinFunction0 f) args = case args of
+                                             [] -> return f
+                                             _ -> returnError ArgumentCountMismatchError
+callFunction (BuiltinFunction1 f) args = case args of
+                                             [arg] -> return (f arg)
+                                             _ -> returnError ArgumentCountMismatchError
+callFunction (BuiltinFunction2 f) args = case args of
+                                             [arg1, arg2] -> return (f (arg1, arg2))
+                                             _ -> returnError ArgumentCountMismatchError
+callFunction (BuiltinFunction3 f) args = case args of
+                                             [arg1, arg2, arg3] -> return (f (arg1, arg2, arg3))
+                                             _ -> returnError ArgumentCountMismatchError
 
 emptyContext :: Context
 emptyContext = GlobalContext M.empty M.empty M.empty
@@ -303,7 +326,13 @@ evaluateDefinition (D.GlobalVariableDefinition name expr) = do value <- evaluate
 evaluateDefinition (D.FunctionDefinition name argNames block) = defineFunction name (Function argNames block)
 evaluateDefinition (D.ProcedureDefinition name argNames block) = defineProcedure name (Procedure argNames block)
 
+initBuiltin :: Evaluator ()
+initBuiltin = do defineFunction "length" (BuiltinFunction1 B.builtinLength)
+                 defineFunction "read" (BuiltinFunction2 B.builtinRead)
+                 defineFunction "modify" (BuiltinFunction3 B.builtinModify)
+
 evaluateProgram :: D.Program -> Evaluator ()
-evaluateProgram program = do mapM_ evaluateDefinition program
+evaluateProgram program = do initBuiltin
+                             mapM_ evaluateDefinition program
                              procMain <- getProcedure "main"
                              callProcedure procMain []

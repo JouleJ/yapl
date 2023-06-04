@@ -111,6 +111,7 @@ instance PrettyPrint Eval.Function where
                                                       mapM_ (putWithIndent (advance . advance $ i)) argNames
                                                       putWithIndent (advance i) "Body"
                                                       prettyPrint (advance . advance $ i) block
+    prettyPrint i f = printWithIndent i f
 
 instance PrettyPrint Eval.Procedure where
     prettyPrint i (Eval.Procedure argNames block) = do putWithIndent i "Procedure"

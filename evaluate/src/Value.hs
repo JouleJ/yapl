@@ -8,7 +8,8 @@ data Value = IntegerValue Integer |
              BooleanValue Bool    |
              CharacterValue Char  |
              StringValue String   |
-             ListValue [Value]
+             ListValue [Value]    |
+             NullValue
     deriving (Eq)
 
 instance Show Value where
@@ -17,6 +18,7 @@ instance Show Value where
     show (CharacterValue c) = show c
     show (StringValue s) = show s
     show (ListValue l) = "[" ++ (intercalate ", " (map show l)) ++ "]"
+    show NullValue = "null"
 
 valueFromLiteral :: L.Literal -> Value
 valueFromLiteral (L.IntegerLiteral x) = IntegerValue x
